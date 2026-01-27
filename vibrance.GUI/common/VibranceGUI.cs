@@ -121,7 +121,6 @@ namespace vibrance.GUI.common
         private void Form1_Load(object sender, EventArgs e)
         {
             SetGuiEnabledFlag(false);
-            UnregisterProfileToggleHotkey();
         }
 
         private void Form1_Resize(object sender, EventArgs e)
@@ -146,6 +145,7 @@ namespace vibrance.GUI.common
             int gammaWindowsLevel = 100;
             bool profileToggleEnabled = false;
             string profileToggleHotkey = string.Empty;
+            bool profileToggleState = true;
 
             while (!this.IsHandleCreated)
             {
@@ -156,12 +156,12 @@ namespace vibrance.GUI.common
             {
                 this.Invoke((MethodInvoker)delegate
                 {
-                    ReadVibranceSettings(out vibranceWindowsLevel, out affectPrimaryMonitorOnly, out neverSwitchResolution, out neverChangeColorSettings, out brightnessWindowsLevel, out contrastWindowsLevel, out gammaWindowsLevel, out profileToggleEnabled, out profileToggleHotkey);
+                    ReadVibranceSettings(out vibranceWindowsLevel, out affectPrimaryMonitorOnly, out neverSwitchResolution, out neverChangeColorSettings, out brightnessWindowsLevel, out contrastWindowsLevel, out gammaWindowsLevel, out profileToggleEnabled, out profileToggleHotkey, out profileToggleState);
                 });
             }
             else
             {
-                ReadVibranceSettings(out vibranceWindowsLevel, out affectPrimaryMonitorOnly, out neverSwitchResolution, out neverChangeColorSettings, out brightnessWindowsLevel, out contrastWindowsLevel, out gammaWindowsLevel, out profileToggleEnabled, out profileToggleHotkey);
+                ReadVibranceSettings(out vibranceWindowsLevel, out affectPrimaryMonitorOnly, out neverSwitchResolution, out neverChangeColorSettings, out brightnessWindowsLevel, out contrastWindowsLevel, out gammaWindowsLevel, out profileToggleEnabled, out profileToggleHotkey, out profileToggleState);
             }
 
             if (_v.GetVibranceInfo().isInitialized)
@@ -177,9 +177,23 @@ namespace vibrance.GUI.common
                 _v.SetNeverSwitchResolution(neverSwitchResolution);
                 _v.SetNeverChangeColorSettings(neverChangeColorSettings);
                 _v.SetWindowsColorSettings(brightnessWindowsLevel, contrastWindowsLevel, gammaWindowsLevel);
-                _v.SetProfileToggleEnabled(profileToggleEnabled);
-                _v.SetProfileToggleState(true);
-                UpdateProfileToggleHotkey(profileToggleHotkey, profileToggleEnabled);
+                bool isProfileToggleFeatureEnabled = profileToggleEnabled && !string.IsNullOrWhiteSpace(profileToggleHotkey);
+                _v.SetProfileToggleEnabled(isProfileToggleFeatureEnabled);
+                if (isProfileToggleFeatureEnabled)
+                {
+                    _v.SetProfileToggleState(profileToggleState);
+                }
+                if (this.InvokeRequired)
+                {
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        UpdateProfileToggleHotkey(profileToggleHotkey, isProfileToggleFeatureEnabled);
+                    });
+                }
+                else
+                {
+                    UpdateProfileToggleHotkey(profileToggleHotkey, isProfileToggleFeatureEnabled);
+                }
             }
         }
 
@@ -258,6 +272,7 @@ namespace vibrance.GUI.common
             int gammaWindowsLevel = 100;
             bool profileToggleEnabled = false;
             string profileToggleHotkey = string.Empty;
+            bool profileToggleState = true;
             this.Invoke((MethodInvoker)delegate
             {
                 windowsLevel = trackBarWindowsLevel.Value;
@@ -269,8 +284,9 @@ namespace vibrance.GUI.common
                 gammaWindowsLevel = trackBarGamma.Value;
                 profileToggleEnabled = checkBoxProfileToggleEnabled.Checked;
                 profileToggleHotkey = textBoxProfileToggleHotkey.Text;
+                profileToggleState = _v.IsProfileToggleOn();
             });
-            SaveVibranceSettings(windowsLevel, affectPrimaryMonitorOnly, neverSwitchResolution, neverChangeColorSettings, brightnessWindowsLevel, contrastWindowsLevel, gammaWindowsLevel, profileToggleEnabled, profileToggleHotkey);
+            SaveVibranceSettings(windowsLevel, affectPrimaryMonitorOnly, neverSwitchResolution, neverChangeColorSettings, brightnessWindowsLevel, contrastWindowsLevel, gammaWindowsLevel, profileToggleEnabled, profileToggleHotkey, profileToggleState);
         }
 
         private void backgroundWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -376,10 +392,14 @@ namespace vibrance.GUI.common
             }
 
             bool enabled = checkBoxProfileToggleEnabled.Checked;
-            _v.SetProfileToggleEnabled(enabled);
-            _v.SetProfileToggleState(true);
+            bool shouldEnable = enabled && !string.IsNullOrWhiteSpace(textBoxProfileToggleHotkey.Text);
+            _v.SetProfileToggleEnabled(shouldEnable);
+            if (!enabled)
+            {
+                _v.SetProfileToggleState(true);
+            }
             ToggleProfileHotkeyControls(enabled);
-            UpdateProfileToggleHotkey(textBoxProfileToggleHotkey.Text, enabled);
+            UpdateProfileToggleHotkey(textBoxProfileToggleHotkey.Text, shouldEnable);
 
             if (!this.settingsBackgroundWorker.IsBusy)
             {
@@ -402,7 +422,9 @@ namespace vibrance.GUI.common
             }
 
             textBoxProfileToggleHotkey.Text = hotkey;
-            UpdateProfileToggleHotkey(hotkey, true);
+            bool shouldEnable = checkBoxProfileToggleEnabled.Checked && !string.IsNullOrWhiteSpace(hotkey);
+            _v.SetProfileToggleEnabled(shouldEnable);
+            UpdateProfileToggleHotkey(hotkey, shouldEnable);
             if (!this.settingsBackgroundWorker.IsBusy)
             {
                 this.settingsBackgroundWorker.RunWorkerAsync();
@@ -560,8 +582,7 @@ namespace vibrance.GUI.common
             }
 
             uint processId;
-            GetWindowThreadProcessId(foregroundWindow, out processId);
-            if (processId == 0)
+            if (GetWindowThreadProcessId(foregroundWindow, out processId) == 0 || processId == 0)
             {
                 return;
             }
@@ -574,8 +595,9 @@ namespace vibrance.GUI.common
                     processName = process.ProcessName;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Log(ex);
                 return;
             }
 
@@ -620,13 +642,13 @@ namespace vibrance.GUI.common
                 this.statusLabel.Text = "Closing...";
                 this.statusLabel.ForeColor = Color.Red;
                 this.Update();
-            if (_v != null && _v.GetVibranceInfo().isInitialized)
-            {
-                _v.HandleDvcExit();
-                _v.SetShouldRun(false);
-                UnregisterProfileToggleHotkey();
-                _v.UnloadLibraryEx();
-            }
+                if (_v != null && _v.GetVibranceInfo().isInitialized)
+                {
+                    _v.HandleDvcExit();
+                    _v.SetShouldRun(false);
+                    UnregisterProfileToggleHotkey();
+                    _v.UnloadLibraryEx();
+                }
             }
             catch (Exception ex)
             {
@@ -665,7 +687,7 @@ namespace vibrance.GUI.common
 
         private void ReadVibranceSettings(out int vibranceWindowsLevel, out bool affectPrimaryMonitorOnly, out bool neverSwitchResolution,
             out bool neverChangeColorSettings, out int brightnessWindowsLevel, out int contrastWindowsLevel, out int gammaWindowsLevel,
-            out bool profileToggleEnabled, out string profileToggleHotkey)
+            out bool profileToggleEnabled, out string profileToggleHotkey, out bool profileToggleState)
         {
             _registryController = new RegistryController();
             this.checkBoxAutostart.Checked = _registryController.IsProgramRegistered(AppName);
@@ -673,7 +695,7 @@ namespace vibrance.GUI.common
             SettingsController settingsController = new SettingsController();
             settingsController.ReadVibranceSettings(_v.GraphicsAdapter, out vibranceWindowsLevel, out affectPrimaryMonitorOnly, out neverSwitchResolution,
                 out neverChangeColorSettings, out _applicationSettings, out brightnessWindowsLevel, out contrastWindowsLevel, out gammaWindowsLevel,
-                out profileToggleEnabled, out profileToggleHotkey);
+                out profileToggleEnabled, out profileToggleHotkey, out profileToggleState);
 
             if (this.IsHandleCreated)
             {
@@ -690,6 +712,7 @@ namespace vibrance.GUI.common
                 ToggleProfileHotkeyControls(profileToggleEnabled);
                 _profileToggleHotkey = profileToggleHotkey;
                 _isLoadingSettings = false;
+                _v.SetProfileToggleState(profileToggleState);
                 UpdateProfileToggleHotkey(profileToggleHotkey, profileToggleEnabled);
                 foreach (ApplicationSetting application in _applicationSettings.ToList())
                 {
@@ -714,7 +737,7 @@ namespace vibrance.GUI.common
             }
         }
 
-        private void SaveVibranceSettings(int windowsLevel, bool affectPrimaryMonitorOnly, bool neverSwitchResolution, bool neverChangeColorSettings, int brightnessWindowsLevel, int contrastWindowsLevel, int gammaWindowsLevel, bool profileToggleEnabled, string profileToggleHotkey)
+        private void SaveVibranceSettings(int windowsLevel, bool affectPrimaryMonitorOnly, bool neverSwitchResolution, bool neverChangeColorSettings, int brightnessWindowsLevel, int contrastWindowsLevel, int gammaWindowsLevel, bool profileToggleEnabled, string profileToggleHotkey, bool profileToggleState)
         {
             SettingsController settingsController = new SettingsController();
 
@@ -728,7 +751,8 @@ namespace vibrance.GUI.common
                 contrastWindowsLevel.ToString(),
                 gammaWindowsLevel.ToString(),
                 profileToggleEnabled.ToString(),
-                profileToggleHotkey
+                profileToggleHotkey,
+                profileToggleState.ToString()
             );
         }
 

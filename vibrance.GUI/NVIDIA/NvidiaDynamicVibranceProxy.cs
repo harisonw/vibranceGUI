@@ -411,7 +411,6 @@ namespace vibrance.GUI.NVIDIA
             }
             else
             {
-                _vibranceInfo.defaultHandle = displayHandle;
                 if (_vibranceInfo.affectPrimaryMonitorOnly && !equalsDVCLevel(_vibranceInfo.defaultHandle, _vibranceInfo.userVibranceSettingDefault))
                 {
                     if (_gameScreen != null && !_gameScreen.DeviceName.Equals(screen.DeviceName))
