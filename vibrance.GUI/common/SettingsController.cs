@@ -37,6 +37,8 @@ namespace vibrance.GUI.common
         const string SzKeyNameBrightnessWindowsLevel = "brightnessWindowsLevel";
         const string SzKeyNameContrastWindowsLevel = "contrastWindowsLevel";
         const string SzKeyNameGammaWindowsLevel = "gammaWindowsLevel";
+        const string SzKeyNameProfileToggleEnabled = "profileToggleEnabled";
+        const string SzKeyNameProfileToggleHotkey = "profileToggleHotkey";
         
 
         private string _fileName = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData).ToString() + "\\vibranceGUI\\vibranceGUI.ini";
@@ -44,7 +46,7 @@ namespace vibrance.GUI.common
 
 
         public bool SetVibranceSettings(string windowsLevel, string affectPrimaryMonitorOnly, string neverSwitchResolution, string neverChangeColorSettings, List<ApplicationSetting> applicationSettings, 
-            string brightnessWindowsLevel, string contrastWindowsLevel, string gammaWindowsLevel)
+            string brightnessWindowsLevel, string contrastWindowsLevel, string gammaWindowsLevel, string profileToggleEnabled, string profileToggleHotkey)
         {
             if (!PrepareFile())
             {
@@ -58,6 +60,8 @@ namespace vibrance.GUI.common
             WritePrivateProfileString(SzSectionName, SzKeyNameBrightnessWindowsLevel, brightnessWindowsLevel, _fileName);
             WritePrivateProfileString(SzSectionName, SzKeyNameContrastWindowsLevel, contrastWindowsLevel, _fileName);
             WritePrivateProfileString(SzSectionName, SzKeyNameGammaWindowsLevel, gammaWindowsLevel, _fileName);
+            WritePrivateProfileString(SzSectionName, SzKeyNameProfileToggleEnabled, profileToggleEnabled, _fileName);
+            WritePrivateProfileString(SzSectionName, SzKeyNameProfileToggleHotkey, profileToggleHotkey ?? string.Empty, _fileName);
 
             try
             {
@@ -105,7 +109,8 @@ namespace vibrance.GUI.common
         }
 
         public void ReadVibranceSettings(GraphicsAdapter graphicsAdapter, out int vibranceWindowsLevel, out bool affectPrimaryMonitorOnly, out bool neverSwitchResolution, 
-            out bool neverChangeColorSettings, out List<ApplicationSetting> applicationSettings, out int brightnessWindowsLevel, out int contrastWindowsLevel, out int gammaWindowsLevel)
+            out bool neverChangeColorSettings, out List<ApplicationSetting> applicationSettings, out int brightnessWindowsLevel, out int contrastWindowsLevel, out int gammaWindowsLevel,
+            out bool profileToggleEnabled, out string profileToggleHotkey)
         {
             int defaultLevel = 0; 
             int maxLevel = 0;
@@ -130,6 +135,8 @@ namespace vibrance.GUI.common
                 brightnessWindowsLevel = 50;
                 contrastWindowsLevel = 50;
                 gammaWindowsLevel = 100;
+                profileToggleEnabled = false;
+                profileToggleHotkey = string.Empty;
                 return;
             }
 
@@ -199,6 +206,22 @@ namespace vibrance.GUI.common
                 Convert.ToUInt32(szValueGammaWindowsLevel.Capacity),
                 _fileName);
 
+            StringBuilder szValueProfileToggleEnabled = new StringBuilder(1024);
+            GetPrivateProfileString(SzSectionName,
+                SzKeyNameProfileToggleEnabled,
+                "false",
+                szValueProfileToggleEnabled,
+                Convert.ToUInt32(szValueProfileToggleEnabled.Capacity),
+                _fileName);
+
+            StringBuilder szValueProfileToggleHotkey = new StringBuilder(1024);
+            GetPrivateProfileString(SzSectionName,
+                SzKeyNameProfileToggleHotkey,
+                string.Empty,
+                szValueProfileToggleHotkey,
+                Convert.ToUInt32(szValueProfileToggleHotkey.Capacity),
+                _fileName);
+
             try
             {
                 vibranceWindowsLevel = int.Parse(szValueInactive.ToString());
@@ -208,6 +231,8 @@ namespace vibrance.GUI.common
                 brightnessWindowsLevel = int.Parse(szValueBrightnessWindowsLevel.ToString());
                 contrastWindowsLevel = int.Parse(szValueContrastWindowsLevel.ToString());
                 gammaWindowsLevel = int.Parse(szValueGammaWindowsLevel.ToString());
+                profileToggleEnabled = bool.Parse(szValueProfileToggleEnabled.ToString());
+                profileToggleHotkey = szValueProfileToggleHotkey.ToString();
             }
             catch (Exception)
             {
@@ -219,6 +244,8 @@ namespace vibrance.GUI.common
                 brightnessWindowsLevel = 50;
                 contrastWindowsLevel = 50;
                 gammaWindowsLevel = 100;
+                profileToggleEnabled = false;
+                profileToggleHotkey = string.Empty;
                 return;
             }
 

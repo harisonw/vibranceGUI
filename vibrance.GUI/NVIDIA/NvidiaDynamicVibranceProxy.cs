@@ -193,6 +193,11 @@ namespace vibrance.GUI.NVIDIA
         {
             if (_applicationSettings.Count > 0)
             {
+                if (_vibranceInfo.isProfileToggleEnabled && !_vibranceInfo.isProfileToggleOn)
+                {
+                    return;
+                }
+
                 ApplicationSetting applicationSetting = _applicationSettings.FirstOrDefault(x => string.Equals(x.Name, e.ProcessName, StringComparison.OrdinalIgnoreCase));
                 if (applicationSetting != null)
                 {                  
@@ -343,6 +348,99 @@ namespace vibrance.GUI.NVIDIA
         public void SetNeverChangeColorSettings(bool neverChangeColorSettings)
         {
             _vibranceInfo.neverChangeColorSettings = neverChangeColorSettings;
+        }
+
+        public void SetProfileToggleEnabled(bool profileToggleEnabled)
+        {
+            _vibranceInfo.isProfileToggleEnabled = profileToggleEnabled;
+            _vibranceInfo.isProfileToggleOn = true;
+        }
+
+        public void SetProfileToggleState(bool isProfileToggleOn)
+        {
+            _vibranceInfo.isProfileToggleOn = isProfileToggleOn;
+        }
+
+        public bool IsProfileToggleEnabled()
+        {
+            return _vibranceInfo.isProfileToggleEnabled;
+        }
+
+        public bool IsProfileToggleOn()
+        {
+            return _vibranceInfo.isProfileToggleOn;
+        }
+
+        public void ApplyProfileToggle(IntPtr windowHandle, string processName, bool isProfileToggleOn)
+        {
+            if (_applicationSettings.Count == 0)
+            {
+                return;
+            }
+
+            ApplicationSetting applicationSetting = _applicationSettings.FirstOrDefault(x => string.Equals(x.Name, processName, StringComparison.OrdinalIgnoreCase));
+            if (applicationSetting == null)
+            {
+                return;
+            }
+
+            int displayHandle = GetApplicationDisplayHandle(windowHandle);
+            if (displayHandle == -1)
+            {
+                return;
+            }
+
+            Screen screen = Screen.FromHandle(windowHandle);
+            if (screen == null)
+            {
+                return;
+            }
+
+            _gameScreen = screen;
+
+            if (isProfileToggleOn)
+            {
+                if (!equalsDVCLevel(displayHandle, applicationSetting.IngameLevel))
+                {
+                    _vibranceInfo.defaultHandle = displayHandle;
+                    setDVCLevel(_vibranceInfo.defaultHandle, applicationSetting.IngameLevel);
+                }
+
+                if (_vibranceInfo.neverChangeColorSettings == false && _vibranceInfo.isColorSettingApplied == false &&
+                    DeviceGammaRampHelper.IsGammaRampEqualToWindowsValues(_vibranceInfo, applicationSetting) == false)
+                {
+                    DeviceGammaRampHelper.SetGammaRamp(screen, applicationSetting.Gamma, applicationSetting.Brightness, applicationSetting.Contrast);
+                    _vibranceInfo.isColorSettingApplied = true;
+                }
+            }
+            else
+            {
+                if (_vibranceInfo.affectPrimaryMonitorOnly && !equalsDVCLevel(_vibranceInfo.defaultHandle, _vibranceInfo.userVibranceSettingDefault))
+                {
+                    if (_gameScreen != null && !_gameScreen.DeviceName.Equals(screen.DeviceName))
+                    {
+                        return;
+                    }
+                    setDVCLevel(_vibranceInfo.defaultHandle, _vibranceInfo.userVibranceSettingDefault);
+                }
+                else if (!_vibranceInfo.affectPrimaryMonitorOnly && !_vibranceInfo.displayHandles.TrueForAll(handle => equalsDVCLevel(handle, _vibranceInfo.userVibranceSettingDefault)))
+                {
+                    _vibranceInfo.displayHandles.ForEach(handle => setDVCLevel(handle, _vibranceInfo.userVibranceSettingDefault));
+                }
+
+                if (_vibranceInfo.neverChangeColorSettings == false && _vibranceInfo.isColorSettingApplied == true)
+                {
+                    if (_vibranceInfo.affectPrimaryMonitorOnly && _gameScreen != null && _gameScreen.DeviceName.Equals(screen.DeviceName))
+                    {
+                        DeviceGammaRampHelper.SetGammaRamp(_gameScreen, _vibranceInfo.userColorSettings.brightness, _vibranceInfo.userColorSettings.contrast, _vibranceInfo.userColorSettings.gamma);
+                    }
+                    else
+                    {
+                        Screen.AllScreens.ToList().ForEach(currentScreen => DeviceGammaRampHelper.SetGammaRamp(currentScreen, _vibranceInfo.userColorSettings.brightness, _vibranceInfo.userColorSettings.contrast, _vibranceInfo.userColorSettings.gamma));
+                    }
+                    _vibranceInfo.isColorSettingApplied = false;
+                }
+            }
         }
 
         public void SetWindowsColorSettings(int brightness, int contrast, int gamma)

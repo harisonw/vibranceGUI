@@ -17,6 +17,11 @@ namespace vibrance.GUI.common
         void SetNeverSwitchResolution(bool neverSwitchResolution);
         void SetNeverChangeColorSettings(bool neverChangeColorSettings);
         void SetWindowsColorSettings(int brightness, int contrast, int gamma);
+        void SetProfileToggleEnabled(bool profileToggleEnabled);
+        void SetProfileToggleState(bool isProfileToggleOn);
+        bool IsProfileToggleEnabled();
+        bool IsProfileToggleOn();
+        void ApplyProfileToggle(IntPtr windowHandle, string processName, bool isProfileToggleOn);
 
         void SetWindowsColorBrightness(int brightness);
         void SetWindowsColorContrast(int contrast);

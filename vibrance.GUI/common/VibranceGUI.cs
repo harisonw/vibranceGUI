@@ -25,6 +25,11 @@ namespace vibrance.GUI.common
         private const string AppName = "vibranceGUI";
         private const string TwitterLink = "https://twitter.com/juvlarN";
         private const string PaypalDonationLink = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=JDQFNKNNEW356";
+        private const int WmHotkey = 0x0312;
+        private const int ProfileToggleHotkeyId = 1;
+        private const uint HotkeyModAlt = 0x0001;
+        private const uint HotkeyModControl = 0x0002;
+        private const uint HotkeyModShift = 0x0004;
 
         private bool _allowVisible;
         private List<ApplicationSetting> _applicationSettings;
@@ -32,6 +37,9 @@ namespace vibrance.GUI.common
         private readonly Dictionary<string, Tuple<ResolutionModeWrapper, List<ResolutionModeWrapper>>> _windowsResolutionSettings;
 
         private readonly bool _isForcedExecution;
+        private bool _isLoadingSettings;
+        private bool _isProfileToggleHotkeyRegistered;
+        private string _profileToggleHotkey;
 
         public VibranceGUI(
             Func<List<ApplicationSetting>, Dictionary<string, Tuple<ResolutionModeWrapper, List<ResolutionModeWrapper>>>, IVibranceProxy> getProxy,
