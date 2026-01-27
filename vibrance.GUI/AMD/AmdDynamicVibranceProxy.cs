@@ -240,11 +240,7 @@ namespace vibrance.GUI.AMD
         {
             if (_applicationSettings.Count > 0)
             {
-                if (_vibranceInfo.isProfileToggleEnabled && !_vibranceInfo.isProfileToggleOn)
-                {
-                    return;
-                }
-
+                bool shouldApplyProfileSettings = !_vibranceInfo.isProfileToggleEnabled || _vibranceInfo.isProfileToggleOn;
                 ApplicationSetting applicationSetting = _applicationSettings.FirstOrDefault(x => string.Equals(x.Name, e.ProcessName, StringComparison.OrdinalIgnoreCase));
                 if (applicationSetting != null)
                 {
@@ -252,7 +248,7 @@ namespace vibrance.GUI.AMD
                     _gameScreen = screen;
 
                     //apply application specific saturation
-                    if (_vibranceInfo.userVibranceSettingDefault != applicationSetting.IngameLevel)
+                    if (shouldApplyProfileSettings && _vibranceInfo.userVibranceSettingDefault != applicationSetting.IngameLevel)
                     {
                         if (_vibranceInfo.affectPrimaryMonitorOnly)
                         {
@@ -275,7 +271,7 @@ namespace vibrance.GUI.AMD
                     }
 
                     //test if color settings change is needed
-                    if (_vibranceInfo.neverChangeColorSettings == false && _vibranceInfo.isColorSettingApplied == false &&
+                    if (shouldApplyProfileSettings && _vibranceInfo.neverChangeColorSettings == false && _vibranceInfo.isColorSettingApplied == false &&
                         DeviceGammaRampHelper.IsGammaRampEqualToWindowsValues(_vibranceInfo, applicationSetting) == false)
                     {
                         DeviceGammaRampHelper.SetGammaRamp(screen, applicationSetting.Gamma, applicationSetting.Brightness, applicationSetting.Contrast);
