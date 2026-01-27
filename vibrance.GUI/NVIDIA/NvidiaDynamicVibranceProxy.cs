@@ -193,11 +193,7 @@ namespace vibrance.GUI.NVIDIA
         {
             if (_applicationSettings.Count > 0)
             {
-                if (_vibranceInfo.isProfileToggleEnabled && !_vibranceInfo.isProfileToggleOn)
-                {
-                    return;
-                }
-
+                bool shouldApplyProfileSettings = !_vibranceInfo.isProfileToggleEnabled || _vibranceInfo.isProfileToggleOn;
                 ApplicationSetting applicationSetting = _applicationSettings.FirstOrDefault(x => string.Equals(x.Name, e.ProcessName, StringComparison.OrdinalIgnoreCase));
                 if (applicationSetting != null)
                 {                  
@@ -211,7 +207,7 @@ namespace vibrance.GUI.NVIDIA
                     _gameScreen = screen;
 
                     //test if digital vibrance change is needed
-                    if (!equalsDVCLevel(displayHandle, applicationSetting.IngameLevel))
+                    if (shouldApplyProfileSettings && !equalsDVCLevel(displayHandle, applicationSetting.IngameLevel))
                     {
                         _vibranceInfo.defaultHandle = displayHandle;
                         setDVCLevel(_vibranceInfo.defaultHandle, applicationSetting.IngameLevel);
@@ -228,7 +224,7 @@ namespace vibrance.GUI.NVIDIA
                     }
 
                     //test if color settings change is needed
-                    if (_vibranceInfo.neverChangeColorSettings == false && _vibranceInfo.isColorSettingApplied == false &&
+                    if (shouldApplyProfileSettings && _vibranceInfo.neverChangeColorSettings == false && _vibranceInfo.isColorSettingApplied == false &&
                         DeviceGammaRampHelper.IsGammaRampEqualToWindowsValues(_vibranceInfo, applicationSetting) == false)
                     {
                         DeviceGammaRampHelper.SetGammaRamp(screen, applicationSetting.Gamma, applicationSetting.Brightness, applicationSetting.Contrast);
@@ -415,6 +411,7 @@ namespace vibrance.GUI.NVIDIA
             }
             else
             {
+                _vibranceInfo.defaultHandle = displayHandle;
                 if (_vibranceInfo.affectPrimaryMonitorOnly && !equalsDVCLevel(_vibranceInfo.defaultHandle, _vibranceInfo.userVibranceSettingDefault))
                 {
                     if (_gameScreen != null && !_gameScreen.DeviceName.Equals(screen.DeviceName))
