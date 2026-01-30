@@ -429,6 +429,11 @@ namespace vibrance.GUI.common
             {
                 this.settingsBackgroundWorker.RunWorkerAsync();
             }
+
+            this.BeginInvoke((MethodInvoker)delegate
+            {
+                this.ActiveControl = null;
+            });
         }
 
 
